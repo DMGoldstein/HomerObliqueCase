@@ -1,0 +1,214 @@
+---
+title: 'Code for "Homeric -φι(ν) is an oblique case marker"'
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+
+
+# Load packages
+
+```{r}
+#Load packages
+library(here)
+library(tidyverse)
+library(R2jags)
+library(magrittr)
+library(stringi)
+library(gridExtra)
+library(ggthemes)
+```
+
+# Read in data
+
+```{r data}
+#This is where the dataset is
+here::here("Data", "Homer_Phi.csv")
+#Read in .csv file
+phi.data <- read.csv(file = "Data/Homer_Phi.csv",
+               stringsAsFactors = FALSE, 
+              header = TRUE)
+#Make factors---Do not make Greek words into factors
+phi.data$Suffix <- factor(phi.data$Suffix)
+phi.data$Text <- factor(phi.data$Text)
+#Convert to Roman script
+phi.data$Form.Latin <- stri_trans_general(phi.data$Form, "greek-latin")
+#Remove prepositions (must be character strings and not factors)
+phi.data <- phi.data %>% filter(Form.Latin != "nósphi" & Form.Latin != "nósphin" & Form.Latin != "aponósphi" & Form.Latin != "aponósphin")
+#Unique forms
+unique.phi.data <- phi.data %>% distinct(Entry, .keep_all = TRUE) #Don't use Form.Latin for constraint
+```
+
+
+
+
+# Frequency distributions
+
+## Token and type frequency
+
+```{r homerphiplots1, warning=FALSE, out.width = '50%', dev="cairo_pdf", fig.align='center', fig.width=8, fig.cap="Frequency distribution of -φι(ν) in the _Iliad_ and _Odyssey_"}
+#Token frequency
+phi.token.freq <- count(phi.data, Text)
+count1.bar <- ggplot(data = phi.token.freq, aes(x = Text, y = n, label = n)) +
+  geom_bar(stat = "identity", color = "black", fill = "white", width = 0.5) +
+  labs(y = "", x = "", size = 20) +
+  geom_text(size = 11, position = position_stack(vjust = 0.5)) +
+  theme_tufte() +
+  ggtitle("Token frequency") +
+  theme(text=element_text(size = 22)) +
+    theme(axis.text.x = element_text(angle = 45, vjust = .5)) 
+
+#Type frequency
+phi.type.freq <- count(unique.phi.data, Text)
+count2.bar <- ggplot(data = phi.type.freq, aes(x = Text, y = n, label = n)) +
+  geom_bar(stat = "identity", color="black", fill="white", width = 0.5) +
+  labs(y = "", x ="", size = 20) +
+  geom_text(size = 11, position = position_stack(vjust = 0.5)) +
+  theme_tufte() +
+  ggtitle("Type frequency") +
+  theme(text=element_text(size = 22)) +
+    theme(axis.text.x = element_text(angle = 45, vjust = .5))
+#Combine bar graphs in grid
+grid.arrange(count1.bar, count2.bar, ncol = 2)
+```
+
+## Token frequency of each word form
+
+
+```{r homerzipfplot, fig.align='center', warning=FALSE, dev="cairo_pdf", out.width = '75%', message=FALSE, fig.height=9, fig.cap="Frequency according to word form"}
+order.table <- count(phi.data, Entry)
+#NB reorder(Entry, n) and reorder(Entry, -n)
+zipf.phi.bar <- ggplot(data = order.table, aes(x = reorder(Entry, n), y = n)) +
+  geom_bar(stat = "identity", width = 0.35, color =" black", fill = "white") +
+  coord_fixed(ratio = 0.85) +
+  labs(y = "", x ="") +
+  theme_tufte() +
+  theme(text=element_text(size=16)) +
+  scale_x_discrete(expand=c(0.00000000000000000001, 0)) 
+  zipf.phi.bar + 
+  coord_flip() +
+  labs(y = "Frequency", x = "Word form")  
+```
+
+## Frequency distribution according to grammatical number
+
+```{r homericdatagraphed, fig.align='center', warning=FALSE, dev="cairo_pdf", out.width = '70%', message=FALSE,  fig.cap="Relative frequency according to grammatical number"}
+homeric.counts <- data.frame(Number = c("Singular", "Dual", "Plural", "Unclassified", 
+                                        "Singular", "Dual", "Plural", "Unclassified"),
+Tokens = c(56976, 752, 26088, 16, 17, 0, 137, 10),
+Frequency = c(56976/83832, 752/83832, 26088/83832, 16/83832, 17/164, 0/164, 137/164, 10/164),
+Group = c("Non-φι(ν)","Non-φι(ν)", "Non-φι(ν)",  "Non-φι(ν)", "-φι(ν)", "-φι(ν)", "-φι(ν)", "-φι(ν)"))
+
+homeric.counts$Number <- factor(homeric.counts$Number, levels = c("Singular", "Dual", "Plural", "Unclassified"))
+
+ggplot(data = homeric.counts, mapping = aes(x = Number, y = Frequency)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~Group, ncol = 2) +
+  theme_tufte() +
+  theme(text=element_text(size = 16), axis.title.x = element_blank()) +
+  ylab("Relative frequency") 
+```
+
+# An excursus on dual φι(ν)-forms
+
+The code for the Bayesian analysis below was adapted from Lee and Wagenmakers, _Bayesian_ _Cognitive_ _Modeling_ (Cambridge 2013), pp. 127--129.
+
+## Data
+
+```{r dualdata}
+#s successes, n trials
+s1 <- 0 
+n1 <- 164 
+s2 <- 752
+n2 <- 83832 
+```
+
+## Two-tailed test of population proportion
+
+```{r prop-test}
+# Two-sided p-value 
+prop.test(c(s1, s2), c(n1, n2), alternative = c("two.sided")) #approximate
+```
+
+## Bayes Factor
+
+```{r bayes-factor}
+# Analytical Bayes factor
+log.BF01 <- lchoose(n1, s1) + lchoose(n2, s2) + log(n1 + 1) + log(n2 + 1) - lchoose((n1 + n2),(s1 + s2)) - log(n1 + n2 + 1)
+BF01 <- exp(log.BF01)
+BF01 
+```
+
+## Model specification
+
+```{r bayes-model}
+data  <- list("s1", "s2", "n1", "n2") 
+
+myinits <- list(
+  list(theta1 = runif(1), theta2 = runif(1), theta1prior = runif(1), theta2prior = runif(1)),
+  list(theta1 = runif(1), theta2 = runif(1), theta1prior = runif(1), theta2prior = runif(1)),
+  list(theta1 = runif(1), theta2 = runif(1), theta1prior = runif(1), theta2prior = runif(1)))
+
+parameters <- c("theta1", "theta2", "delta", "deltaprior")
+```
+
+
+
+
+```{r bayes-model2}
+#This is where the model file is
+here::here("Code", "Model.txt")
+samples <- jags(data,
+                inits = myinits, 
+                        parameters,
+	 			    model.file = "Code/Model.txt",
+	 		    	n.chains = 3, 
+	 			    n.iter = 2000000, 
+	 			    n.burnin = 100000, 
+	 			    n.thin = 1,
+	 			    DIC = TRUE)
+```
+
+
+```{r bayes-model3}
+# Mean of delta
+mean <- mean(samples$BUGSoutput$sims.list$delta)
+# Median of delta
+median <- median(samples$BUGSoutput$sims.list$delta)
+# 95% credible interval for delta
+ninefive.ci <- quantile(samples$BUGSoutput$sims.list$delta, c(0.025, 0.975))
+```
+
+## Posterior distribution
+
+```{r delta-data}
+#Collect posterior samples across all chains:
+delta.posterior  <- as.data.frame(samples$BUGSoutput$sims.list$delta)
+names(delta.posterior) <- "Value" 
+delta.posterior$Category <- rep("Delta Posterior", 5700000)
+
+delta.prior <- as.data.frame(samples$BUGSoutput$sims.list$deltaprior)
+names(delta.prior) <- "Value" 
+delta.prior$Category <- rep("Delta Prior", 5700000)
+ 
+delta <- rbind(delta.posterior, delta.prior)
+```
+
+## Visualization of posterior distribution of delta
+
+
+```{r deltaposteriorcode, out.width = '70%', dev="cairo_pdf", fig.align='center', message=FALSE, warning=FALSE, results='hide', fig.keep='all', fig.cap="Posterior distribution of the difference in rates"}
+ggplot(delta.posterior) +
+  geom_histogram(aes(x = Value), bins = 100) +
+  coord_cartesian(x = c(-0.1, 0.1)) +
+  xlab("Difference in rates") +
+  ylab("Posterior density") +
+    theme(text = element_text(size = 10)) +
+  theme_tufte() +
+  scale_y_continuous(labels=scales::comma)
+```
+
+
