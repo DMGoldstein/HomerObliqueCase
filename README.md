@@ -1,4 +1,4 @@
-# Data and source code for the paper "Homeric -φι(ν) is an oblique case marker"
+# Data and source code for the paper "Homeric -phi(n) is an oblique case marker"
 
 
 ## Overview
