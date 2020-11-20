@@ -3,7 +3,7 @@
 
 ## Overview
 
-This repository contains the data and source code for the paper "Homeric -φι(ν) is an oblique case marker."
+This repository contains the data and source code for the paper "Homeric -phi(n) is an oblique case marker."
 
 ## Data
 
