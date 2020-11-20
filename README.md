@@ -1,9 +1,9 @@
-# Data and source code for the paper "Homeric -phi(n) is an oblique case marker"
+# Data and source code for the paper "Homeric -_phi(n)_ is an oblique case marker"
 
 
 ## Overview
 
-This repository contains the data and source code for the paper "Homeric -phi(n) is an oblique case marker."
+This repository contains the data and source code for the paper "Homeric -_phi(n)_ is an oblique case marker."
 
 ## Data
 
